@@ -1,4 +1,12 @@
 ## Web Bluetooth Demo
+
+running:
+```
+npm install
+npm run-script build
+```
+then serve `dist/index.html` somewhere.
+
 #### Reading the heart rate and drawing a chart based on the collected data.
 
 ### In this demo, I've used Polar H7 sensor.

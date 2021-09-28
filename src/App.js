@@ -50,7 +50,7 @@ export default class App extends Component {
     onNewHr(bpm) {
         const chartData = [...this.state.chartData, {time: +Date.now(),heartRate:bpm}];
         this.setState({chartData});
-        console.log('currentHeartRate:', currentHeartRate);
+        console.log('currentHeartRate:', bpm);
     }
 
     // BLEConnect(){
@@ -76,6 +76,7 @@ export default class App extends Component {
 
     render() {
         const currentHeartRate = this.state.chartData[this.state.chartData.length-1];
+        const minHeartRate = Math.min(...this.state.chartData.map(x=>x.heartRate));
         const margins = {left: 100, right: 100, top: 20, bottom: 50};
         const chartSeries = [
             {
@@ -88,6 +89,7 @@ export default class App extends Component {
             <div id="app">
                 <RaisedButton onClick={this.startMonitoring} label="Start Monitoring!" primary={true} />
                 {currentHeartRate && <p>Current Heart Rate: <span style={{color:'#C20000'}}>{currentHeartRate.heartRate}</span></p>}
+                {currentHeartRate && <p>Minimum Heart Rate: <span style={{color:'#C20000'}}>{minHeartRate}</span></p>}
                 <LineChart
                     margins= {margins}
                     data={this.state.chartData}

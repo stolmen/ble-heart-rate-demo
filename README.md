@@ -1,8 +1,8 @@
 ## Web Bluetooth Demo
 
-running:
+hackily running:
 ```
-npm install
+npm install --also=dev
 npm run-script build
 ```
 then serve `dist/index.html` somewhere.

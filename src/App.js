@@ -19,10 +19,41 @@ class FakeHrSource {
 
 }
 
-// inmplement me
-//class WebBtHrSource {
-//
-//}
+class BleHrSource {
+    constructor() {
+
+    }
+    listen(cb) {
+        this.cb = cb;
+        return navigator.bluetooth.requestDevice({filters: [{services: ['heart_rate']}]})
+            .then(device => {
+                return device.gatt.connect();
+            })
+            .then(server => {
+                return server.getPrimaryService('heart_rate')
+            })
+            .then(service => {
+                return service.getCharacteristic('heart_rate_measurement')
+            })
+            .then(character => {
+                this.characteristic = character;
+                return this.characteristic.startNotifications().then(_ => {
+                    this.characteristic.addEventListener('characteristicvaluechanged',
+                        this.heartRateChange.bind(this));
+                });
+            })
+            .catch(e => console.error(e));
+    }
+
+    heartRateChange(event) {
+        const value = event.target.value;
+        const currentHeartRate = value.getUint8(1);
+        this.cb(currentHeartRate);
+    }
+}
+
+
+const hr_source_cls = BleHrSource;
 
 
 export default class App extends Component {
@@ -35,7 +66,8 @@ export default class App extends Component {
     }
 
     startMonitoring(){
-        this.hr_source = new FakeHrSource();
+        this.hr_source = new hr_source_cls();
+        // this.hr_source = new FakeHrSource();
         this.hr_source.listen(this.onNewHr.bind(this));
     }
 

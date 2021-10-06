@@ -21484,39 +21484,47 @@
 
 	function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
 
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
 	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-	var App = function (_Component) {
-	    _inherits(App, _Component);
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-	    function App() {
-	        _classCallCheck(this, App);
-
-	        var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this));
-
-	        _this.state = { chartData: [] };
-	        _this.BLEConnect = _this.BLEConnect.bind(_this);
-	        return _this;
+	var FakeHrSource = function () {
+	    function FakeHrSource() {
+	        _classCallCheck(this, FakeHrSource);
 	    }
 
-	    _createClass(App, [{
-	        key: 'heartRateChange',
-	        value: function heartRateChange(event) {
-	            var value = event.target.value;
-	            var currentHeartRate = value.getUint8(1);
-	            var chartData = [].concat(_toConsumableArray(this.state.chartData), [{ time: +Date.now(), heartRate: currentHeartRate }]);
-	            this.setState({ chartData: chartData });
-	            console.log('currentHeartRate:', currentHeartRate);
+	    _createClass(FakeHrSource, [{
+	        key: 'listen',
+	        value: function listen(cb) {
+	            this.cb = cb;
+	            // start listening to heart rate.
+	            // call callback once per new value
+	            setInterval(this.newFakeFr.bind(this), 1000);
 	        }
 	    }, {
-	        key: 'BLEConnect',
-	        value: function BLEConnect() {
-	            var _this2 = this;
+	        key: 'newFakeFr',
+	        value: function newFakeFr() {
+	            var fakeHr = Math.random(50, 100) * 50 + 50;
+	            this.cb(fakeHr);
+	        }
+	    }]);
 
+	    return FakeHrSource;
+	}();
+
+	var BleHrSource = function () {
+	    function BleHrSource() {
+	        _classCallCheck(this, BleHrSource);
+	    }
+
+	    _createClass(BleHrSource, [{
+	        key: 'listen',
+	        value: function listen(cb) {
+	            var _this = this;
+
+	            this.cb = cb;
 	            return navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] }).then(function (device) {
 	                return device.gatt.connect();
 	            }).then(function (server) {
@@ -21524,18 +21532,96 @@
 	            }).then(function (service) {
 	                return service.getCharacteristic('heart_rate_measurement');
 	            }).then(function (character) {
-	                _this2.characteristic = character;
-	                return _this2.characteristic.startNotifications().then(function (_) {
-	                    _this2.characteristic.addEventListener('characteristicvaluechanged', _this2.heartRateChange.bind(_this2));
+	                _this.characteristic = character;
+	                return _this.characteristic.startNotifications().then(function (_) {
+	                    _this.characteristic.addEventListener('characteristicvaluechanged', _this.heartRateChange.bind(_this));
 	                });
 	            }).catch(function (e) {
 	                return console.error(e);
 	            });
 	        }
 	    }, {
+	        key: 'heartRateChange',
+	        value: function heartRateChange(event) {
+	            var value = event.target.value;
+	            var currentHeartRate = value.getUint8(1);
+	            this.cb(currentHeartRate);
+	            // const chartData = [...this.state.chartData, {time: +Date.now(),heartRate:currentHeartRate}];
+	            // this.setState({chartData});
+	            // console.log('currentHeartRate:', currentHeartRate);
+	        }
+	    }]);
+
+	    return BleHrSource;
+	}();
+
+	var hr_source_cls = BleHrSource;
+
+	var App = function (_Component) {
+	    _inherits(App, _Component);
+
+	    function App() {
+	        _classCallCheck(this, App);
+
+	        var _this2 = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this));
+
+	        _this2.state = { chartData: [] };
+	        _this2.startMonitoring = _this2.startMonitoring.bind(_this2);
+	        return _this2;
+	    }
+
+	    _createClass(App, [{
+	        key: 'startMonitoring',
+	        value: function startMonitoring() {
+	            this.hr_source = new hr_source_cls();
+	            // this.hr_source = new FakeHrSource();
+	            this.hr_source.listen(this.onNewHr.bind(this));
+	        }
+
+	        // heartRateChange(event){
+	        //     const value = event.target.value;
+	        //     const currentHeartRate = value.getUint8(1);
+	        //     const chartData = [...this.state.chartData, {time: +Date.now(),heartRate:currentHeartRate}];
+	        //     this.setState({chartData});
+	        //     console.log('currentHeartRate:', currentHeartRate);
+	        // }
+
+	    }, {
+	        key: 'onNewHr',
+	        value: function onNewHr(bpm) {
+	            var chartData = [].concat(_toConsumableArray(this.state.chartData), [{ time: +Date.now(), heartRate: bpm }]);
+	            this.setState({ chartData: chartData });
+	            console.log('currentHeartRate:', bpm);
+	        }
+
+	        // BLEConnect(){
+	        //     return navigator.bluetooth.requestDevice({filters: [{services: ['heart_rate']}]})
+	        //         .then(device => {
+	        //             return device.gatt.connect();
+	        //         })
+	        //         .then(server => {
+	        //             return server.getPrimaryService('heart_rate')
+	        //         })
+	        //         .then(service => {
+	        //             return service.getCharacteristic('heart_rate_measurement')
+	        //         })
+	        //         .then(character => {
+	        //             this.characteristic = character;
+	        //             return this.characteristic.startNotifications().then(_ => {
+	        //                 this.characteristic.addEventListener('characteristicvaluechanged',
+	        //                     this.heartRateChange.bind(this));
+	        //             });
+	        //         })
+	        //         .catch(e => console.error(e));
+	        // }
+
+	    }, {
 	        key: 'render',
 	        value: function render() {
-	            var currentHearRate = this.state.chartData[this.state.chartData.length - 1];
+	            var currentHeartRate = this.state.chartData[this.state.chartData.length - 1];
+	            var minHeartRate = Math.min.apply(Math, _toConsumableArray(this.state.chartData.map(function (x) {
+	                return x.heartRate;
+	            })));
 	            var margins = { left: 100, right: 100, top: 20, bottom: 50 };
 	            var chartSeries = [{
 	                field: 'heartRate',
@@ -21545,15 +21631,25 @@
 	            return _react2.default.createElement(
 	                'div',
 	                { id: 'app' },
-	                _react2.default.createElement(_RaisedButton2.default, { onClick: this.BLEConnect, label: 'Start Monitoring!', primary: true }),
-	                currentHearRate && _react2.default.createElement(
+	                _react2.default.createElement(_RaisedButton2.default, { onClick: this.startMonitoring, label: 'Start Monitoring!', primary: true }),
+	                currentHeartRate && _react2.default.createElement(
 	                    'p',
 	                    null,
 	                    'Current Heart Rate: ',
 	                    _react2.default.createElement(
 	                        'span',
 	                        { style: { color: '#C20000' } },
-	                        currentHearRate.heartRate
+	                        currentHeartRate.heartRate
+	                    )
+	                ),
+	                currentHeartRate && _react2.default.createElement(
+	                    'p',
+	                    null,
+	                    'Minimum Heart Rate: ',
+	                    _react2.default.createElement(
+	                        'span',
+	                        { style: { color: '#C20000' } },
+	                        minHeartRate
 	                    )
 	                ),
 	                _react2.default.createElement(_reactD3Basic.LineChart, {
